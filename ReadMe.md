@@ -29,30 +29,30 @@ There are three key steps in the update process of Helen: count the feature freq
 ```python
 import torch
 import torch.nn.functional as F
-from optim import Helen
+from optim import helen
 
 # init the optimizer
-data, feature_specs = YourDataset()       # a map contains information like vocab_size
+data, feature_specs = YourDataset()  # a map contains information like vocab_size
 
-model = YourModel(data)                   # CTR prediction model is dependent on the data
+model = YourModel(data)  # CTR prediction model is dependent on the data
 
-feature_params_map = ...                  # a map from feature name to its parameters
+feature_params_map = ...  # a map from feature name to its parameters
 
-embed_params = model.get_embed_params()   # get the embedding parameters
-net_params = model.get_net_params()       # get the dense network parameters
+embed_params = model.get_embed_params()  # get the embedding parameters
+net_params = model.get_net_params()  # get the dense network parameters
 
 optimizer = Helen(embed_params, net_params, lr_embed=1e-3, lr_net=1e-3, rho=0.05, net_pert=True, bound=0.3)
 
 for X, y in data:
     # 1. count the occurrence of each feature in the batch
     optimizer.count_feature_occurrence(X, feature_params_map, feature_specs)
-	
+
     # 2. first forward-backward pass
     loss = loss_function(model(X), y)
     optimizer.zero_grad()
     loss.backward()
     optimizer.first_step(zero_grad=True)
-    
+
     # 3. second forward-backward pass
     loss = loss_function(model(X), y)
     loss.backward()
