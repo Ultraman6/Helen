@@ -147,13 +147,11 @@ class Alchemist:
         opt = cfg_optim.optimizer
         embed_params = self.model.embed_params()
         net_params = self.model.net_params()
-        lr_net = cfg_optim.lr_net
-        lr_embed = cfg_optim.lr_embed
-        params = embed_params + net_params
+        lr = getattr(cfg_optim, "lr", 1e-3)
 
         param_group = [
-            {'params': embed_params, 'lr': lr_embed, 'embed': True},
-            {'params': net_params, 'lr': lr_net, 'embed': False}
+            {'params': embed_params, 'lr': lr, 'embed': True},
+            {'params': net_params, 'lr': lr, 'embed': False}
         ]
 
         if isinstance(opt, str):
@@ -161,11 +159,22 @@ class Alchemist:
                 opt = "Adam"
         if opt.lower() == "adam":
             logging.info("Using Adam optimizer")
-            opt = torch.optim.Adam(param_group, betas=cfg_optim.betas)
+            adam_kwargs = {}
+            if hasattr(cfg_optim, "betas"):
+                adam_kwargs["betas"] = cfg_optim.betas
+            if hasattr(cfg_optim, "eps"):
+                adam_kwargs["eps"] = cfg_optim.eps
+            if hasattr(cfg_optim, "weight_decay"):
+                adam_kwargs["weight_decay"] = cfg_optim.weight_decay
+            opt = torch.optim.Adam(param_group, **adam_kwargs)
         elif opt.lower() == "helen":
             logging.info("Using contest or Helen optimizer")
             opt_class = eval(opt)
-            opt = opt_class(embed_params, net_params, **cfg_optim)
+            helen_kwargs = {}
+            for k in ["rho", "bound", "net_pert", "betas", "eps", "weight_decay", "adaptive"]:
+                if hasattr(cfg_optim, k):
+                    helen_kwargs[k] = getattr(cfg_optim, k)
+            opt = opt_class(embed_params, net_params, lr_embed=lr, lr_net=lr, **helen_kwargs)
         else:
             try:
                 logging.info("Using {} optimizer".format(opt))

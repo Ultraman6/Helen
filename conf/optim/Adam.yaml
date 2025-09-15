@@ -1,5 +1,2 @@
-defaults:
-  - common
-  - _self_
 optimizer: adam
 weight_decay: 0.0
