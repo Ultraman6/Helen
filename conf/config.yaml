@@ -1,7 +1,7 @@
 defaults:
-  - model: PNN
-  - data: taobao
-  - optim: Helen
+  - model: DCN
+  - data: avazu
+  - optim: adam
   - optional data_hyper@_here_: ${data}_${model}
   #  - override hydra/sweeper: optuna
   - _self_
