@@ -1,3 +1,6 @@
+defaults:
+  - common
+  - _self_
+
 optimizer: SAM
-rho: 0.05
-weight_decay: 0.0
+rho: 0.05 # 0.05,0.01,0.005,0.001

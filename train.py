@@ -3,7 +3,6 @@ from tqdm import tqdm
 from time import time
 from typing import Callable
 import os
-
 import numpy as np
 import torch
 import torch.nn as nn
@@ -60,10 +59,13 @@ class Alchemist:
     def train_one_epoch(self, epoch, train_gen, loss_fn, optimizer, cfg, logger=None, val_gen=None):
         self.model.train()
         total_loss = 0
+        optim = cfg.optim.optimizer.lower()
         with tqdm(train_gen, ncols=120) as pbar:
             for batch_index, batch_data in enumerate(pbar):
-                if cfg.optim.optimizer.lower() == "helen":
-                    batch_loss = self.train_one_batch_Helen(batch_data, loss_fn, optimizer)
+                if optim == 'helen':
+                    batch_loss = self.train_one_batch_helen(batch_data, loss_fn, optimizer)
+                elif optim in ['sam', 'salp', 'asam']:
+                    batch_loss = self.train_one_batch_pert(batch_data, loss_fn, optimizer)
                 else:
                     batch_loss = self.train_one_batch(batch_data, loss_fn, optimizer, cfg.optim.max_grad_norm)
 
@@ -91,11 +93,20 @@ class Alchemist:
         optimizer.step()
         return loss.item()
 
-    def train_one_batch_Helen(self, batch_data, loss_fn, optimizer):
+    def train_one_batch_pert(self, batch_data, loss_fn, optimizer):
         X, y = self.inputs_to_device(batch_data)
+        loss = self.calculate_total_loss(self.model(X), y, loss_fn)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.first_step(zero_grad=True)
+        loss = self.calculate_total_loss(self.model(X), y, loss_fn)
+        loss.backward()
+        optimizer.second_step()
+        return loss.item()
 
+    def train_one_batch_helen(self, batch_data, loss_fn, optimizer):
+        X, y = self.inputs_to_device(batch_data)
         optimizer.count_feature_occurrence(X, self.model.get_feature_params_map(), self.model.feature_specs)
-
         loss = self.calculate_total_loss(self.model(X), y, loss_fn)
         optimizer.zero_grad()
         loss.backward()
@@ -147,40 +158,17 @@ class Alchemist:
         opt = cfg_optim.optimizer
         embed_params = self.model.embed_params()
         net_params = self.model.net_params()
-        lr = getattr(cfg_optim, "lr", 1e-3)
+        params = embed_params + net_params
 
-        param_group = [
-            {'params': embed_params, 'lr': lr, 'embed': True},
-            {'params': net_params, 'lr': lr, 'embed': False}
-        ]
-
-        if isinstance(opt, str):
-            if opt.lower() == "adam":
-                opt = "Adam"
-        if opt.lower() == "adam":
-            logging.info("Using Adam optimizer")
-            adam_kwargs = {}
-            if hasattr(cfg_optim, "betas"):
-                adam_kwargs["betas"] = cfg_optim.betas
-            if hasattr(cfg_optim, "eps"):
-                adam_kwargs["eps"] = cfg_optim.eps
-            if hasattr(cfg_optim, "weight_decay"):
-                adam_kwargs["weight_decay"] = cfg_optim.weight_decay
-            opt = torch.optim.Adam(param_group, **adam_kwargs)
-        elif opt.lower() == "helen":
+        if opt.lower() in ["erm", "sam"]:
+            opt = eval(opt)(params, **cfg_optim)
+        elif opt.lower() == 'asam':
+            opt = eval('SAM')(params, adaptive=True, **cfg_optim)
+        elif opt.lower() in ["helen", "salp"]:
             logging.info("Using contest or Helen optimizer")
-            opt_class = eval(opt)
-            helen_kwargs = {}
-            for k in ["rho", "bound", "net_pert", "betas", "eps", "weight_decay", "adaptive"]:
-                if hasattr(cfg_optim, k):
-                    helen_kwargs[k] = getattr(cfg_optim, k)
-            opt = opt_class(embed_params, net_params, lr_embed=lr, lr_net=lr, **helen_kwargs)
+            opt = eval(opt)(embed_params, net_params, **cfg_optim)
         else:
-            try:
-                logging.info("Using {} optimizer".format(opt))
-                opt = getattr(torch.optim, opt)(param_group)
-            except:
-                raise NotImplementedError("optimizer={} is not supported.".format(opt))
+            raise NotImplementedError("optimizer={} is not supported.".format(opt))
         return opt
 
     @staticmethod
@@ -224,7 +212,6 @@ class Alchemist:
                 raise NotImplementedError("loss={} is not supported.".format(loss))
         return loss_fn
 
-
 class ReduceLROnPlateau(BaseReduceLROnPlateau):
     def _reduce_lr(self, epoch):
         for i, param_group in enumerate(self.optimizer.param_groups):
@@ -238,7 +225,6 @@ class ReduceLROnPlateau(BaseReduceLROnPlateau):
                     logging.info('Epoch {}: reducing learning rate'
                                  ' of group {} to {:.4e}.'.format(epoch_str, i, new_lr))
 
-
 class WarmupLR(torch.optim.lr_scheduler.LambdaLR):
     def __init__(self, optimizer, warmup_steps, last_epoch=-1):
         self.warmup_steps = warmup_steps
@@ -249,7 +235,6 @@ class WarmupLR(torch.optim.lr_scheduler.LambdaLR):
             return float(epoch) / float(max(1, self.warmup_steps))
         else:
             return 1.0
-
 
 class WarmupReduceLROnPlateau(ReduceLROnPlateau):
     """

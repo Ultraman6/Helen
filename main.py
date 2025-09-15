@@ -1,10 +1,12 @@
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from hydra.core.hydra_config import HydraConfig
+
 import gc
 import logging
 import os
 from datetime import datetime
+
 from utils.utils import seed_everything, print_to_list
 from utils.load_data import load_data
 import models
@@ -22,10 +24,6 @@ def my_app(cfg: DictConfig) -> None:
     model = model_class(feature_map, **OmegaConf.to_container(model_cfg))
     logging.info(f"Total number of parameters: {model.count_parameters()}")
 
-    # train the model
-    # if len(cfg.gpu) == 1:
-    #     gpu = cfg.gpu[0]
-    # else:
     gpu = cfg.gpu[HydraConfig.get().job.get('num', 0) % len(cfg.gpu)]
     logging.info(f"Use GPU {gpu}")
     alchemist = Alchemist(model, gpu)

@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 name: Avazu
-data_format: csv
+data_format: h5
 data_root: /mnt/d/data/Avazu_x4
 feature_cols:
 #  - { active: false, dtype: str, name: id, type: categorical }
@@ -18,7 +18,7 @@ feature_cols:
 label_col: { dtype: float, name: click }
 min_categr_count: 2
 
-train_data: /mnt/d/data/Avazu_x4/train.csv
-valid_data: /mnt/d/data/Avazu_x4/valid.csv
-test_data: /mnt/d/data/Avazu_x4/test.csv
+train_data: /mnt/d/data/Avazu_x4/Avazu/train.h5
+valid_data: /mnt/d/data/Avazu_x4/Avazu/valid.h5
+test_data: /mnt/d/data/Avazu_x4/Avazu/test.h5
 

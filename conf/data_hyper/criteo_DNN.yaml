@@ -8,12 +8,3 @@ model:
   embedding_regularizer: 1.0e-05
   net_dropout: 0.2
   net_regularizer: 0
-
-
-optim:
-  max_grad_norm: 10.0
-  lr: 0.001
-  lr_decay: False
-  gamma: 0.1
-  min_lr: 1e-6
-  warmup_steps: -1

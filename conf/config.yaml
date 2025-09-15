@@ -1,7 +1,7 @@
 defaults:
-  - model: DCN
+  - model: DeepFM
   - data: avazu
-  - optim: adam
+  - optim: ERM
   - optional data_hyper@_here_: ${data}_${model}
   #  - override hydra/sweeper: optuna
   - _self_

@@ -1,0 +1,9 @@
+optimizer: ???
+lr: 0.001
+momentum: 0.9
+weight_decay: 0.0  # 1e-4 1e-5
+max_grad_norm: 10.0
+lr_decay: False
+gamma: 0.1
+min_lr: 1e-6
+warmup_steps: -1

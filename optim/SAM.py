@@ -1,63 +1,52 @@
-import torch
+from collections import defaultdict
+import torch, logging
+from torch.optim import Adam, SGD
 
-class SAM(torch.optim.Optimizer):
-    def __init__(self, params, base_optimizer, rho=0.05, adaptive=False, **kwargs):
+class SAM:
+    def __init__(self, params, lr=1e-3, momentum=0.9, weight_decay=0.0, base_optim='adam',
+                       rho=0.05, adaptive=False, **kwargs):
+        if lr < 0.0:
+            raise ValueError(f"Invalid learning rate: {lr}")
+        if weight_decay < 0.0:
+            raise ValueError(f"Invalid weight_decay value: {weight_decay}")
+        logging.info(f'Using SAM optimizer with lr={lr} weight_decay={weight_decay} rho={rho}')
         assert rho >= 0.0, f"Invalid rho, should be non-negative: {rho}"
-
-        defaults = dict(rho=rho, adaptive=adaptive, **kwargs)
-        super(SAM, self).__init__(params, defaults)
-
-        self.base_optimizer = base_optimizer(self.param_groups, **kwargs)
-        self.param_groups = self.base_optimizer.param_groups
-        self.defaults.update(self.base_optimizer.defaults)
+        self.state = defaultdict(dict)
+        self.params = params
+        self.rho = rho
+        self.adaptive = adaptive
+        if base_optim == 'adam':
+            self.optimizer = Adam(params, lr=lr, weight_decay=weight_decay)
+        else:
+            self.optimizer = SGD(params, lr=lr, momentum=momentum, weight_decay=weight_decay)
 
     @torch.no_grad()
     def first_step(self, zero_grad=False):
         grad_norm = self._grad_norm()
-        for group in self.param_groups:
-            scale = group["rho"] / (grad_norm + 1e-12)
-
-            for p in group["params"]:
-                if p.grad is None: continue
-                self.state[p]["old_p"] = p.data.clone()
-                e_w = (torch.pow(p, 2) if group["adaptive"] else 1.0) * p.grad * scale.to(p)
-                # p.add_(e_w)  # climb to the local maximum "w + e(w)"
-                p.data = p.data + e_w
-
-        if zero_grad: self.zero_grad()
+        scale = self.rho / grad_norm
+        for p in self.params:
+            if p.grad is None: continue
+            self.state[p]["old_p"] = p.data.clone()
+            scale *= torch.pow(p, 2) if self.adaptive else 1.0
+            p.data.add_(p.grad.data * scale.to(p))
+        if zero_grad: self.optimizer.zero_grad()
 
     @torch.no_grad()
     def second_step(self, zero_grad=False):
-        for group in self.param_groups:
-            for p in group["params"]:
-                if p.grad is None: continue
-                p.data = self.state[p]["old_p"]  # get back to "w" from "w + e(w)"
-
-        self.base_optimizer.step()  # do the actual "sharpness-aware" update
-
-        if zero_grad: self.zero_grad()
-
-    @torch.no_grad()
-    def step(self, closure=None):
-        assert closure is not None, "Sharpness Aware Minimization requires closure, but it was not provided"
-        closure = torch.enable_grad()(closure)  # the closure should do a full forward-backward pass
-
-        self.first_step(zero_grad=True)
-        closure()
-        self.second_step()
+        for p in self.params:
+            p.data.copy_(self.state[p]["old_p"])
+        self.optimizer.step()
+        if zero_grad: self.optimizer.zero_grad()
 
     def _grad_norm(self):
-        shared_device = self.param_groups[0]["params"][0].device  # put everything on the same device, in case of model parallelism
+        shared_device = self.params[0].device  # put everything on the same device, in case of model parallelism
         norm = torch.norm(
-                    torch.stack([
-                        ((torch.abs(p) if group["adaptive"] else 1.0) * p.grad).norm(p=2).to(shared_device)
-                        for group in self.param_groups for p in group["params"]
-                        if p.grad is not None
-                    ]),
-                    p=2
-               )
-        return norm
+            torch.stack([
+                ((torch.abs(p) if self.adaptive else 1.0) * p.grad).norm(p=2).to(shared_device)
+                for p in self.params if p.grad is not None
+            ]), p=2
+        )
+        return norm + 1e-12
 
-    def load_state_dict(self, state_dict):
-        super().load_state_dict(state_dict)
-        self.base_optimizer.param_groups = self.param_groups
+    def zero_grad(self):
+        self.optimizer.zero_grad()

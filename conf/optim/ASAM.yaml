@@ -1,0 +1,6 @@
+defaults:
+  - common
+  - _self_
+
+optimizer: ASAM
+rho: 2.0
