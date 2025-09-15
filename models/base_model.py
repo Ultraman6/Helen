@@ -101,7 +101,7 @@ class BaseModel(nn.Module):
         torch.save(self.state_dict(), checkpoint)
 
     def load_weights(self, checkpoint):
-        state_dict = torch.load(checkpoint, map_location="cpu")
+        state_dict = torch.load(checkpoint, map_location="cpu", weights_only=True)
         self.load_state_dict(state_dict)
         del state_dict
         torch.cuda.empty_cache()

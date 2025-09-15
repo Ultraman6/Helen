@@ -110,10 +110,17 @@ class FeatureEncoder(object):
 
     def _complete_feature_cols(self, feature_cols):
         full_feature_cols = []
+        # Support Hydra/OmegaConf ListConfig as a list of names
+        try:
+            from omegaconf import ListConfig as OmegaListConfig
+        except Exception:
+            OmegaListConfig = type(None)
         for col in feature_cols:
             name_or_namelist = col["name"]
-            if isinstance(name_or_namelist, list):
-                for _name in name_or_namelist:
+            is_list_of_names = isinstance(name_or_namelist, (list, tuple, OmegaListConfig)) and \
+                               not isinstance(name_or_namelist, (str, bytes))
+            if is_list_of_names:
+                for _name in list(name_or_namelist):
                     _col = col.copy()
                     _col["name"] = _name
                     full_feature_cols.append(_col)

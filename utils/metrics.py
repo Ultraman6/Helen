@@ -14,7 +14,7 @@
 # limitations under the License.
 # =========================================================================
 
-
+import numpy as np
 from sklearn.metrics import roc_auc_score, log_loss
 import logging
 
@@ -24,7 +24,9 @@ def evaluate_metrics(y_true, y_pred, metrics, **kwargs):
     for metric in metrics:
         metric = metric.lower()
         if metric in ['logloss', 'binary_crossentropy']:
-            result[metric] = log_loss(y_true, y_pred, eps=1e-7)
+            # result[metric] = log_loss(y_true, y_pred, eps=1e-7)
+            # y_pred_safe = np.clip(y_pred, 1e-7, 1.0 - 1e-7)
+            result[metric] = log_loss(y_true, y_pred)
         elif metric == 'auc':
             result[metric] = roc_auc_score(y_true, y_pred)
         else:

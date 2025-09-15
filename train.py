@@ -161,7 +161,7 @@ class Alchemist:
                 opt = "Adam"
         if opt.lower() == "adam":
             logging.info("Using Adam optimizer")
-            opt = optim.Adam(param_group, betas=cfg_optim.betas)
+            opt = torch.optim.Adam(param_group, betas=cfg_optim.betas)
         elif opt.lower() == "helen":
             logging.info("Using contest or Helen optimizer")
             opt_class = eval(opt)

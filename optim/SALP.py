@@ -1,6 +1,5 @@
 import torch
 
-
 class SALP(torch.optim.Optimizer):
     def __init__(
         self,

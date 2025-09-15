@@ -1,12 +1,10 @@
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from hydra.core.hydra_config import HydraConfig
-
 import gc
 import logging
 import os
 from datetime import datetime
-
 from utils.utils import seed_everything, print_to_list
 from utils.load_data import load_data
 import models

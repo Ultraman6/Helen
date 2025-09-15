@@ -29,7 +29,7 @@ There are three key steps in the update process of Helen: count the feature freq
 ```python
 import torch
 import torch.nn.functional as F
-from optim import helen
+from optim import Helen
 
 # init the optimizer
 data, feature_specs = YourDataset()  # a map contains information like vocab_size

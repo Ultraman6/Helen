@@ -1,0 +1,6 @@
+defaults:
+  - common
+  - _self_
+
+optimizer: SAM
+rho: 0.05

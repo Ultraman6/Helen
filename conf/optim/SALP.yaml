@@ -1,0 +1,9 @@
+defaults:
+  - common
+  - _self_
+
+optimizer: SALP
+rho: 0.01
+rho_min: 0.0
+rho_max: inf
+rho_lr: 1.0
