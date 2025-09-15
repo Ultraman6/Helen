@@ -7,23 +7,14 @@ data_root: /mnt/d/data/TaobaoAd_x1
 data_format: csv
 min_categr_count: 10
 feature_cols:
-  - {active: true, dtype: int, name: group_id, preprocess: copy_from(userid), remap: false,
-      type: meta}
-  -   active: true
-      dtype: str
-      name: [userid, cms_segid, cms_group_id, final_gender_code, age_level, pvalue_level,
-          shopping_level, occupation, new_user_class_level, adgroup_id, cate_id,
-          campaign_id, customer, brand, pid, btag]
-      type: categorical
-  - {active: true, dtype: float, name: price, type: numeric}
-  - {active: true, dtype: str, max_len: 50, name: cate_his, padding: pre, share_embedding: cate_id,
-      splitter: ^, type: sequence}
-  - {active: true, dtype: str, max_len: 50, name: brand_his, padding: pre, share_embedding: brand,
-      splitter: ^, type: sequence}
-  - {active: true, dtype: str, max_len: 50, name: btag_his, padding: pre, share_embedding: btag,
-      splitter: ^, type: sequence}
-label_col: { name: clk, dtype: float }
+  - name: [ "userid", "btag_his", "cate_his", "brand_his", "cms_segid", "cms_group_id", "final_gender_code",
+            "age_level", "pvalue_level", "shopping_level", "occupation", "new_user_class_level", "adgroup_id",
+            "cate_id", "campaign_id", "customer", "brand", "price", "pid", "btag" ]
+    active: True
+    dtype: str
+    type: categorical
 
+label_col: { name: clk, dtype: float }
 train_data: /mnt/d/data/TaobaoAd_x1/train.csv
 valid_data: /mnt/d/data/TaobaoAd_x1/test.csv
 test_data: /mnt/d/data/TaobaoAd_x1/test.csv
